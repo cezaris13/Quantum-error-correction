@@ -25,9 +25,28 @@ def svg_to_png_with_white_bg(svg_data):
 
     return final_png_bytes
 
+def pad_image_to_same_size(img1, img2):
+    """Pads the smaller image with white background to match the size of the larger one."""
+    max_height = max(img1.shape[0], img2.shape[0])
+    max_width = max(img1.shape[1], img2.shape[1])
+
+    def pad_image(img):
+        pad_height = max_height - img.shape[0]
+        pad_width = max_width - img.shape[1]
+        return np.pad(
+            img,
+            ((0, pad_height), (0, pad_width), (0, 0)),  # Pad height, width, and keep channels
+            mode='constant',
+            constant_values=1  # White background
+        )
+
+    return pad_image(img1), pad_image(img2)
+
 def compare_svg_diagram(d1, d2):
     img1 = mpimg.imread(svg_to_png_with_white_bg(d1._repr_svg_()), format='png')
     img2 = mpimg.imread(svg_to_png_with_white_bg(d2._repr_svg_()), format='png')
+
+    img1, img2 = pad_image_to_same_size(img1, img2)  # Normalize sizes
 
     print(f"Your circuit's diagram (left) {'IS' if img1.shape == img2.shape and np.all(img1 == img2) else 'is NOT'} \
 identical to the reference one (right).")
