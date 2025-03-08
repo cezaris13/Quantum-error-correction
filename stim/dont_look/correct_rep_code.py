@@ -7,7 +7,7 @@ def create_rep_code_stim_string(distance, rounds, p):
     up = ' '.join(map(str, reversed(range(1, n))))
     nm = distance-1
     nd = distance
-    
+
     string = f"""
     R {qs}
     X_ERROR({p}) {qs}
@@ -24,7 +24,7 @@ def create_rep_code_stim_string(distance, rounds, p):
     M {ms}
     DEPOLARIZE1({p}) {ds}
     """
-    
+
     for i, j in enumerate(range(1, n, 2)):
         string += f'DETECTOR({j}, 0) rec[{-nm + i}]\n'
 
@@ -47,11 +47,11 @@ def create_rep_code_stim_string(distance, rounds, p):
             DEPOLARIZE1({p}) {ds}
             SHIFT_COORDS(0, 1)
             """
-        
+
         for i, j in enumerate(range(1, n, 2)):
             string += f'    DETECTOR({j}, 0) rec[{-nm + i}] rec[{-2*nm + i}]\n'
         string += "}\n"
-        
+
     string += f"""
     R {ms}
     X_ERROR({p}) {ms}
@@ -69,7 +69,7 @@ def create_rep_code_stim_string(distance, rounds, p):
     M {ms} {ds}
     SHIFT_COORDS(0, 1)
     """
-    
+
     for i, j in enumerate(range(1, n, 2)):
         string += f'DETECTOR({j}, 0) rec[{-nm - nd + i}] rec[{-2*nm - nd + i}] \n'
     for i, j in enumerate(range(1, n, 2)):
@@ -77,4 +77,4 @@ def create_rep_code_stim_string(distance, rounds, p):
 
     string += "OBSERVABLE_INCLUDE(0) rec[-1]\n"
 
-    return string 
+    return string

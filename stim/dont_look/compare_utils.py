@@ -51,7 +51,9 @@ def compare_svg_diagram(d1, d2):
     print(f"Your circuit's diagram (left) {'IS' if img1.shape == img2.shape and np.all(img1 == img2) else 'is NOT'} \
 identical to the reference one (right).")
 
-    return compare(img1, img2, start_mode='horizontal', height=285, display_format='png', add_controls=False)
+    # Changed to height 500, since I cannot see the ids of the image.
+    # For the change to take effect, restart the notebook and rerun the cells.
+    return compare(img1, img2, start_mode='horizontal', height=500, display_format='png', add_controls=False)
 
 def compare_plt_fig(fig1, filename):
     b1 = BytesIO()
