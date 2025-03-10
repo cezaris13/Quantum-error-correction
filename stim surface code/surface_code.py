@@ -141,38 +141,21 @@ def lattice_with_noise(distance: int, p: float) -> str:
     stim_string = f""
     for i in range(4):
         used_qubits = set()
-
+        cx_qubits = []
         for z_measure in z_measures:
             adjacent_coordinate, coordinate_exists = adjacent_z[z_measure][i]
             if coordinate_exists:
-                used_qubits.update([adjacent_coordinate, z_measure])
-                stim_string += f"CX {c2i[adjacent_coordinate]} {c2i[z_measure]}\n"
+                cx_qubits.extend([adjacent_coordinate, z_measure])
 
         for x_measure in x_measures:
             adjacent_coordinate, coordinate_exists = adjacent_x[x_measure][i]
             if coordinate_exists:
-                used_qubits.update([adjacent_coordinate, x_measure])
-                stim_string += f"CX {c2i[x_measure]} {c2i[adjacent_coordinate]}\n"
+                cx_qubits.extend([x_measure, adjacent_coordinate])
 
-        for z_measure in z_measures:
-            adjacent_coordinate, coordinate_exists = adjacent_z[z_measure][i]
-            if coordinate_exists:
-                stim_string += (
-                    f"DEPOLARIZE2({p}) {c2i[adjacent_coordinate]} {c2i[z_measure]}\n"
-                )
-
-        for x_measure in x_measures:
-            adjacent_coordinate, coordinate_exists = adjacent_x[x_measure][i]
-
-            if coordinate_exists:
-                stim_string += (
-                    f"DEPOLARIZE2({p}) {c2i[x_measure]} {c2i[adjacent_coordinate]}\n"
-                )
-
-        for key, value in c2i.items():
-            if not key in used_qubits:
-                stim_string += f"DEPOLARIZE1({p}) {value}\n"
-
+        idle = [coord for coord in c2i.keys() if coord not in cx_qubits]
+        stim_string += f"CX {index_string(cx_qubits, c2i)}\n"
+        stim_string += f"DEPOLARIZE2({p}) {index_string(cx_qubits, c2i)}\n"
+        stim_string += f"DEPOLARIZE1({p}) {index_string(idle, c2i)}\n"
         stim_string += "TICK\n"
 
     return stim_string
@@ -190,21 +173,18 @@ def stabilizers_with_noise(distance, p):
     # add depolarize to data qubits
     stim_string += f"DEPOLARIZE1({p}) {index_string(datas, c2i)}\n"
     stim_string += "TICK\n"
-
     stim_string += f"H {index_string(x_measures, c2i)}\n"
     stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
-
     stim_string += "TICK\n"
 
     stim_string += lattice_with_noise(distance, p)
 
     stim_string += f"H {index_string(x_measures, c2i)}\n"
     stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
-
     stim_string += "TICK\n"
     stim_string += f"X_ERROR({p}) {index_string(all_measures, c2i)}\n"
     stim_string += f"DEPOLARIZE1({p}) {index_string(datas, c2i)}\n"
-    stim_string += f"M {index_string(all_measures,c2i)}"
+    stim_string += f"M {index_string(all_measures,c2i)}\n"
 
     return stim_string
 
@@ -213,19 +193,53 @@ def initialization_step(distance, p):
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
     all_measures = x_measures + z_measures
     all_qubits = datas + all_measures
-    # Use `lattice_with_noise` to create the first round of stabilizer
-    #  measurements in the surface code. Reference but don't use
-    #  `stabilizers_with_noise`. Add first-round detectors.
+
     stim_string = f""
-    return NotImplemented
+    stim_string += f"R {index_string(all_qubits, c2i)}\n"
+    stim_string += f"X_ERROR({p}) {index_string(all_qubits, c2i)}\n"
+    stim_string += "TICK\n"
+    stim_string += f"H {index_string(x_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
+    stim_string += "TICK\n"
+
+    stim_string += lattice_with_noise(distance, p)
+
+    stim_string += f"H {index_string(x_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
+    stim_string += "TICK\n"
+    stim_string += f"X_ERROR({p}) {index_string(all_measures, c2i)}\n"
+    stim_string += f"M {index_string(all_measures,c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(datas, c2i)}\n"
+    stim_string += "TICK\n"
+
+    # add detectors for x basis measurements, aka z stabilizers
+    for i in range(1, len(z_measures) + 1):
+        stim_string += f"DETECTOR({i}, 0) rec[-{i}]\n"
+
+    return stim_string
 
 
 def rounds_step(distance, rounds, p):
+    if rounds <= 2:
+        return "\n"
+
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
-    # Use `stabilizers_with_noise` to implement the `REPEAT` block of
-    #  stabilizers. Include the mid-round detectors.
+
     stim_string = f""
-    return NotImplemented
+    stim_string += f"REPEAT {rounds-2} {{\n"
+    stim_string += stabilizers_with_noise(distance, p)
+
+    stim_string += "TICK\n"
+
+    num_measures_per_type = len(z_measures)
+    for i in range(1, len(z_measures) + 1):
+        stim_string += f"DETECTOR({i}, 0) rec[-{i}] rec[-{i+2*num_measures_per_type}]\n"
+
+    for i in range(1, len(x_measures) + 1):
+        stim_string += f"DETECTOR({i}, 0) rec[-{i + num_measures_per_type}] rec[-{i+3*num_measures_per_type}]\n"
+
+    stim_string += "}\n"
+    return stim_string
 
 
 def final_step(distance, p):
