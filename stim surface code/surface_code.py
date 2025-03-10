@@ -1,8 +1,10 @@
+from typing import List, Dict, Tuple
+
 # ============================
 # Provided utility functions
 
 
-def data_coords(distance):
+def data_coords(distance: int) -> List[Tuple[int, int]]:
     # Returns coordinate pairs from (1,1) to (distance,distance).
     coords = []
     for row in range(1, distance + 1):
@@ -11,7 +13,7 @@ def data_coords(distance):
     return coords
 
 
-def z_measure_coords(distance):
+def z_measure_coords(distance: int) -> List[Tuple[float, float]]:
     # Returns coordinate pairs for Z measure qubits, offset from
     #  the data qubits by 0.5.
     coords = []
@@ -24,7 +26,7 @@ def z_measure_coords(distance):
     return coords
 
 
-def x_measure_coords(distance):
+def x_measure_coords(distance: int) -> List[Tuple[float, float]]:
     # Returns coordinate pairs for X measure qubits, offset from
     #  the data qubits by 0.5 and opposite the Y measure qubits.
     coords = []
@@ -37,7 +39,9 @@ def x_measure_coords(distance):
     return coords
 
 
-def coords_to_index(coords):
+def coords_to_index(
+    coords: List[Tuple[float, float]]
+) -> Dict[Tuple[float, float], int]:
     # Inverts a list of coordinates into a dict that maps the coord
     #  to its index in the list.
     return {tuple(c): i for i, c in dict(enumerate(coords)).items()}
@@ -71,12 +75,21 @@ def adjacent_coords(
     return coordinates
 
 
-def index_string(coord_list, c2i):
+def index_string(
+    coord_list: List[Tuple[float, float]], c2i: Dict[Tuple[float, float], int]
+) -> str:
     # Returns the indicies for each coord in a list as space-delimited string.
     return " ".join(str(c2i[coord]) for coord in coord_list)
 
 
-def prepare_coords(distance: int):
+def prepare_coords(
+    distance: int,
+) -> Tuple[
+    List[Tuple[int, int]],
+    List[Tuple[float, float]],
+    List[Tuple[float, float]],
+    Dict[Tuple[float, float], int],
+]:
     # Returns coordinates for data qubits, x measures and z measures, along with
     #  a coordinate-to-index mapping for all of the qubits.
     # The indices are ordered: data first, then x measures, then z measures.
@@ -87,7 +100,7 @@ def prepare_coords(distance: int):
     return datas, x_measures, z_measures, c2i
 
 
-def coord_circuit(distance):
+def coord_circuit(distance: int) -> str:
     # Returns a Stim circuit string that adds a QUBIT_COORDS instruction for each
     #  qubit, based on the coordinate-to-index mapping.
     _, _, _, c2i = prepare_coords(distance)
@@ -97,7 +110,7 @@ def coord_circuit(distance):
     return stim_circuit
 
 
-def label_indices(distance):
+def label_indices(distance: int) -> str:
     # Returns a Stim circuit string that labels each of the qubits with their
     #  type and index in the coordinate-to-index mapping.
     # Uses ERROR operations to do the labeling: X_ and Z_ERRORs correspond to
@@ -161,7 +174,7 @@ def lattice_with_noise(distance: int, p: float) -> str:
     return stim_string
 
 
-def stabilizers_with_noise(distance, p):
+def stabilizers_with_noise(distance: int, p: float) -> str:
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
     all_measures = x_measures + z_measures
     all_qubits = datas + all_measures
@@ -189,7 +202,7 @@ def stabilizers_with_noise(distance, p):
     return stim_string
 
 
-def initialization_step(distance, p):
+def initialization_step(distance: int, p: float) -> str:
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
     all_measures = x_measures + z_measures
     all_qubits = datas + all_measures
@@ -219,7 +232,7 @@ def initialization_step(distance, p):
     return stim_string
 
 
-def rounds_step(distance, rounds, p):
+def rounds_step(distance: int, rounds: int, p: float) -> str:
     if rounds <= 2:
         return "\n"
 
@@ -242,7 +255,7 @@ def rounds_step(distance, rounds, p):
     return stim_string
 
 
-def final_step(distance, p):
+def final_step(distance: int, p: float) -> str:
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
     all_measures = x_measures + z_measures
     all_qubits = datas + all_measures
@@ -268,7 +281,7 @@ def final_step(distance, p):
     stim_string += f"M {index_string(all_qubits,c2i)}\n"
 
     num_measures_per_type = len(z_measures)
-    #checking with previous step measurements
+    # checking with previous step measurements
     for i in range(1, len(z_measures) + 1):
         stim_string += f"DETECTOR({i}, 0) rec[-{i}] rec[-{i + len(all_qubits)}]\n"
 
@@ -280,7 +293,7 @@ def final_step(distance, p):
         z: adjacent_coords(distance, z, x_stabilizer=True) for z in z_measures
     }
 
-    for i, z_measure  in enumerate(z_measures):
+    for i, z_measure in enumerate(z_measures):
         coordinates = adjacent_z[z_measure]
         # take z measure coordinates, find all around it, and push it to the detector
         rec_string = f"rec[-{len(all_qubits) - c2i[z_measure]}] "
@@ -292,7 +305,7 @@ def final_step(distance, p):
 
     rec_string = ""
 
-    #for measure you take horizontal line in stabilizer code, for x measure
+    # for measure you take horizontal line in stabilizer code, for x measure
     for i in range(1, distance + 1):
         rec_string += f"rec[-{i + len(all_measures)}] "
 
@@ -300,7 +313,7 @@ def final_step(distance, p):
     return stim_string
 
 
-def surface_code_circuit_string(distance, rounds, p):
+def surface_code_circuit_string(distance: int, rounds: int, p: float) -> str:
     string = coord_circuit(distance)
     string += initialization_step(distance, p)
     string += rounds_step(distance, rounds, p)
