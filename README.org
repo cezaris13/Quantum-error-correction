@@ -1,0 +1,14 @@
+* Quantum error correction
+
+Two main error correction codes are analysed here:
+
+- Repetition Code: A simple error correction code that protects against bit-flip or phase-flip errors by repeating qubit states multiple times and performing majority voting.
+
+- Surface Code: A more advanced topological error correction code that detects and corrects both bit-flip and phase-flip errors using a structured lattice of qubits.
+
+** Installation requirements
+#+begin_src
+pip install stim numpy pymatching sinter
+#+end_src
+
+Note: you also need to install `jupyter_compare_view package`, but currently with python version 3.13, it fails to install, so you will need to build it by hand.
