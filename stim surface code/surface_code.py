@@ -246,12 +246,58 @@ def final_step(distance, p):
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
     all_measures = x_measures + z_measures
     all_qubits = datas + all_measures
-    # Use `lattice_with_noise` to implement the final round of stabilizer
-    #  measurements and the final data measurements. Add the last round
-    #  detectors, the final data measure detectors, and the
-    #  `OBSERVABLE_INCLUDE` instruction.
+
     stim_string = f""
-    return NotImplemented
+
+    stim_string += f"R {index_string(all_measures, c2i)}\n"
+    # add error to measure qubits
+    stim_string += f"X_ERROR({p}) {index_string(all_measures, c2i)}\n"
+    # add depolarize to data qubits
+    stim_string += f"DEPOLARIZE1({p}) {index_string(datas, c2i)}\n"
+    stim_string += "TICK\n"
+    stim_string += f"H {index_string(x_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
+    stim_string += "TICK\n"
+
+    stim_string += lattice_with_noise(distance, p)
+
+    stim_string += f"H {index_string(x_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
+    stim_string += "TICK\n"
+    stim_string += f"X_ERROR({p}) {index_string(all_qubits, c2i)}\n"
+    stim_string += f"M {index_string(all_qubits,c2i)}\n"
+
+    num_measures_per_type = len(z_measures)
+    #checking with previous step measurements
+    for i in range(1, len(z_measures) + 1):
+        stim_string += f"DETECTOR({i}, 0) rec[-{i}] rec[-{i + len(all_qubits)}]\n"
+
+    for i in range(1, len(x_measures) + 1):
+        stim_string += f"DETECTOR({i}, 0) rec[-{i + num_measures_per_type}] rec[-{i+num_measures_per_type + len(all_qubits)}]\n"
+
+    # we need to check z stabilizer if measure qubits and data qubits around it are the same
+    adjacent_z = {
+        z: adjacent_coords(distance, z, x_stabilizer=True) for z in z_measures
+    }
+
+    for i, z_measure  in enumerate(z_measures):
+        coordinates = adjacent_z[z_measure]
+        # take z measure coordinates, find all around it, and push it to the detector
+        rec_string = f"rec[-{len(all_qubits) - c2i[z_measure]}] "
+        for coord, exists in coordinates:
+            if exists:
+                rec_string += f"rec[-{len(all_qubits) - c2i[coord]}] "
+
+        stim_string += f"DETECTOR({i},0) {rec_string}\n"
+
+    rec_string = ""
+
+    #for measure you take horizontal line in stabilizer code, for x measure
+    for i in range(1, distance + 1):
+        rec_string += f"rec[-{i + len(all_measures)}] "
+
+    stim_string += f"OBSERVABLE_INCLUDE(0) {rec_string}"
+    return stim_string
 
 
 def surface_code_circuit_string(distance, rounds, p):
