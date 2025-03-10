@@ -182,10 +182,31 @@ def stabilizers_with_noise(distance, p):
     datas, x_measures, z_measures, c2i = prepare_coords(distance)
     all_measures = x_measures + z_measures
     all_qubits = datas + all_measures
-    # Use `lattice_with_noise` to create a full lattice of stabilizers
-    #  including the resets and measurements. No detectors yet.
+
     stim_string = f""
-    return NotImplemented
+    stim_string += f"R {index_string(all_measures, c2i)}\n"
+    # add error to measure qubits
+    stim_string += f"X_ERROR({p}) {index_string(all_measures, c2i)}\n"
+    # add depolarize to data qubits
+    stim_string += f"DEPOLARIZE1({p}) {index_string(datas, c2i)}\n"
+    stim_string += "TICK\n"
+
+    stim_string += f"H {index_string(x_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
+
+    stim_string += "TICK\n"
+
+    stim_string += lattice_with_noise(distance, p)
+
+    stim_string += f"H {index_string(x_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(all_qubits, c2i)} \n"
+
+    stim_string += "TICK\n"
+    stim_string += f"X_ERROR({p}) {index_string(all_measures, c2i)}\n"
+    stim_string += f"DEPOLARIZE1({p}) {index_string(datas, c2i)}\n"
+    stim_string += f"M {index_string(all_measures,c2i)}"
+
+    return stim_string
 
 
 def initialization_step(distance, p):
